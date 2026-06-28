@@ -39,23 +39,34 @@ jobs:
           MC_VERSION="${{ inputs.minecraft_version }}"
           echo "Fetching versions for Minecraft $MC_VERSION..."
 
-          # 1. Fetch ALL Fabric API versions and filter locally with jq
-          # This avoids URL encoding issues with brackets in the query string
+          # 1. Fetch Fabric API from Modrinth (Reliable for API)
           FABRIC_API_VERSION=$(curl -s "https://api.modrinth.com/v2/project/P7dR8mSH/version" | \
             jq -r --arg mc "$MC_VERSION" '.[] | select(.game_versions[] == $mc and .loaders[] == "fabric") | .version_number' | head -n 1)
 
-          # 2. Fetch ALL ModMenu versions and filter locally with jq
-          MODMENU_VERSION=$(curl -s "https://api.modrinth.com/v2/project/mOgUt4GM/version" | \
-            jq -r --arg mc "$MC_VERSION" '.[] | select(.game_versions[] == $mc and .loaders[] == "fabric") | .version_number' | head -n 1)
+          # 2. Fetch ModMenu from Maven Metadata (Reliable for Maven existence)
+          # We fetch the metadata XML which lists ALL available versions, then filter for the MC version
+          MAVEN_METADATA=$(curl -s "https://maven.terraformersmc.com/releases/com/terraformersmc/modmenu/maven-metadata.xml")
+          
+          # Extract all versions, then find the first one that matches our MC version logic
+          # Since Maven lists all versions chronologically, we grep for the MC version and take the last (newest) match
+          MODMENU_VERSION=$(echo "$MAVEN_METADATA" | grep -oP '(?<=<version>)[^<]+' | grep "^${MC_VERSION%.*}" | tail -n 1)
+          
+          # Fallback: If exact major version match fails (e.g. 1.20 vs 1.20.1), try loose match
+          if [ -z "$MODMENU_VERSION" ]; then
+             MODMENU_VERSION=$(echo "$MAVEN_METADATA" | grep -oP '(?<=<version>)[^<]+' | grep "$MC_VERSION" | tail -n 1)
+          fi
 
-          # 3. Validate results
+          # Validation
           if [ -z "$FABRIC_API_VERSION" ] || [ "$FABRIC_API_VERSION" == "null" ]; then
             echo "::error::Could not find Fabric API for Minecraft $MC_VERSION"
             exit 1
           fi
           
-          if [ -z "$MODMENU_VERSION" ] || [ "$MODMENU_VERSION" == "null" ]; then
-            echo "::error::Could not find ModMenu for Minecraft $MC_VERSION"
+          if [ -z "$MODMENU_VERSION" ]; then
+            echo "::error::Could not find ModMenu for Minecraft $MC_VERSION in Maven repository. Available versions might differ."
+            # Debug: Print available versions for 1.20
+            echo "::notice::Available ModMenu versions containing '1.20':"
+            echo "$MAVEN_METADATA" | grep -oP '(?<=<version>)[^<]+' | grep "1.20" || echo "None found."
             exit 1
           fi
 
@@ -63,7 +74,7 @@ jobs:
           echo "modmenu_version=$MODMENU_VERSION" >> $GITHUB_OUTPUT
           echo "Successfully found:"
           echo "  - Fabric API: $FABRIC_API_VERSION"
-          echo "  - ModMenu: $MODMENU_VERSION"   
+          echo "  - ModMenu: $MODMENU_VERSION"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3

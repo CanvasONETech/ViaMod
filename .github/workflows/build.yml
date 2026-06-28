@@ -39,21 +39,36 @@ jobs:
           MC_VERSION="${{ inputs.minecraft_version }}"
           echo "Fetching versions for Minecraft $MC_VERSION..."
 
-          # 1. Fetch Fabric API from Modrinth (Reliable for API)
+          # 1. Fetch Fabric API from Modrinth
           FABRIC_API_VERSION=$(curl -s "https://api.modrinth.com/v2/project/P7dR8mSH/version" | \
             jq -r --arg mc "$MC_VERSION" '.[] | select(.game_versions[] == $mc and .loaders[] == "fabric") | .version_number' | head -n 1)
 
-          # 2. Fetch ModMenu from Maven Metadata (Reliable for Maven existence)
-          # We fetch the metadata XML which lists ALL available versions, then filter for the MC version
-          MAVEN_METADATA=$(curl -s "https://maven.terraformersmc.com/releases/com/terraformersmc/modmenu/maven-metadata.xml")
+          # 2. Fetch ModMenu from Modrinth API (FIXED: Uses game_versions filter instead of Maven string matching)
+          # ModMenu uses semantic versioning (e.g., 7.2.2) which does not contain "1.20.1" in the version string.
+          # The Modrinth API correctly maps game compatibility.
+          MODMENU_VERSION=$(curl -s "https://api.modrinth.com/v2/project/mOgUt4GM/version" | \
+            jq -r --arg mc "$MC_VERSION" '.[] | select(.game_versions[] == $mc and .loaders[] == "fabric") | .version_number' | head -n 1)
           
-          # Extract all versions, then find the first one that matches our MC version logic
-          # Since Maven lists all versions chronologically, we grep for the MC version and take the last (newest) match
-          MODMENU_VERSION=$(echo "$MAVEN_METADATA" | grep -oP '(?<=<version>)[^<]+' | grep "^${MC_VERSION%.*}" | tail -n 1)
-          
-          # Fallback: If exact major version match fails (e.g. 1.20 vs 1.20.1), try loose match
+          # Fallback: Hardcoded mapping for stable releases if API fails or returns empty
           if [ -z "$MODMENU_VERSION" ]; then
-             MODMENU_VERSION=$(echo "$MAVEN_METADATA" | grep -oP '(?<=<version>)[^<]+' | grep "$MC_VERSION" | tail -n 1)
+            echo "::notice::Modrinth API returned empty, trying fallback mapping..."
+            case "$MC_VERSION" in
+              "1.20.1") MODMENU_VERSION="7.2.2" ;;
+              "1.20.2") MODMENU_VERSION="7.2.2" ;;
+              "1.20.3") MODMENU_VERSION="7.2.2" ;; # Often compatible with .4 mods or specific .3 build
+              "1.20.4") MODMENU_VERSION="9.2.0" ;;
+              "1.20.5") MODMENU_VERSION="10.0.0" ;;
+              "1.20.6") MODMENU_VERSION="10.0.0" ;;
+              "1.21.0") MODMENU_VERSION="11.0.1" ;;
+              "1.21.1") MODMENU_VERSION="11.0.3" ;;
+              "1.21.2") MODMENU_VERSION="12.0.0" ;;
+              "1.21.3") MODMENU_VERSION="12.0.0" ;;
+              "1.21.4") MODMENU_VERSION="13.0.1" ;;
+              *) 
+                echo "::error::No hardcoded ModMenu version for $MC_VERSION. Please update the script."
+                exit 1
+                ;;
+            esac
           fi
 
           # Validation
@@ -63,10 +78,7 @@ jobs:
           fi
           
           if [ -z "$MODMENU_VERSION" ]; then
-            echo "::error::Could not find ModMenu for Minecraft $MC_VERSION in Maven repository. Available versions might differ."
-            # Debug: Print available versions for 1.20
-            echo "::notice::Available ModMenu versions containing '1.20':"
-            echo "$MAVEN_METADATA" | grep -oP '(?<=<version>)[^<]+' | grep "1.20" || echo "None found."
+            echo "::error::Could not find ModMenu for Minecraft $MC_VERSION"
             exit 1
           fi
 
@@ -94,6 +106,10 @@ jobs:
         id: find_jar
         run: |
           JAR_PATH=$(find build/libs -name "*${{ inputs.mod_version }}*.jar" ! -name "*-sources*" ! -name "*-dev*" | head -n 1)
+          if [ -z "$JAR_PATH" ]; then
+            echo "::error::Build successful but no JAR file found matching version ${{ inputs.mod_version }}"
+            exit 1
+          fi
           echo "jar_path=$JAR_PATH" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release

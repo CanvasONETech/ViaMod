@@ -33,8 +33,12 @@ public class ViaModClient implements ClientModInitializer {
 
         List<String> failedMods = new ArrayList<>();
         
-        // FIX: Use getRawGameVersion() which exists in 1.20.1 Fabric Loader
-        String currentMcVersion = FabricLoader.getInstance().getRawGameVersion();
+        // FIX: Use Environment Variable passed by GitHub Actions
+        String currentMcVersion = System.getenv("MINECRAFT_VERSION");
+        if (currentMcVersion == null) {
+            // Fallback for local development if env var is missing
+            currentMcVersion = "1.20.1"; 
+        }
 
         List<Path> jars;
         try {
@@ -72,12 +76,12 @@ public class ViaModClient implements ClientModInitializer {
     }
 
     private boolean isModVersionHigher(String json, String currentVersion) {
-        // TODO: Implement actual JSON parsing
+        // TODO: Implement actual JSON parsing and SemVer comparison
         return false; 
     }
 
     private String extractModName(String json) {
-        // TODO: Implement JSON parsing
+        // TODO: Implement JSON parsing to extract "name" or "id"
         return null;
     }
 }

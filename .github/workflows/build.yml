@@ -39,10 +39,26 @@ jobs:
           MC_VERSION="${{ inputs.minecraft_version }}"
           
           # Fetch latest Fabric API version for the specified MC version
-          FABRIC_API_VERSION=$(curl -s "https://api.modrinth.com/v2/project/P7dR8mSH/version?loaders=[%22fabric%22]&game_versions=[%22$MC_VERSION%22]" | jq -r '.[0].version_number')
+          # We filter specifically for versions that contain the MC version string in the version number
+          FABRIC_API_DATA=$(curl -s "https://api.modrinth.com/v2/project/P7dR8mSH/version?loaders=[\"fabric\"]&game_versions=[\"$MC_VERSION\"]")
+          FABRIC_API_VERSION=$(echo "$FABRIC_API_DATA" | jq -r '.[0].version_number' | head -n 1)
           
-          # Fetch latest ModMenu version for the specified MC version
-          MODMENU_VERSION=$(curl -s "https://api.modrinth.com/v2/project/mOgUt4GM/version?loaders=[%22fabric%22]&game_versions=[%22$MC_VERSION%22]" | jq -r '.[0].version_number')
+          # Fallback: If the specific query fails, try fetching all and filtering by name
+          if [ -z "$FABRIC_API_VERSION" ] || [ "$FABRIC_API_VERSION" == "null" ]; then
+             echo "Direct query failed, trying fallback..."
+             ALL_VERSIONS=$(curl -s "https://api.modrinth.com/v2/project/P7dR8mSH/version")
+             FABRIC_API_VERSION=$(echo "$ALL_VERSIONS" | jq -r --arg mc "$MC_VERSION" '.[] | select(.game_versions[] == $mc and .loaders[] == "fabric") | .version_number' | head -n 1)
+          fi
+
+          # Fetch latest ModMenu version
+          MODMENU_DATA=$(curl -s "https://api.modrinth.com/v2/project/mOgUt4GM/version?loaders=[\"fabric\"]&game_versions=[\"$MC_VERSION\"]")
+          MODMENU_VERSION=$(echo "$MODMENU_DATA" | jq -r '.[0].version_number' | head -n 1)
+
+          # Fallback for ModMenu
+          if [ -z "$MODMENU_VERSION" ] || [ "$MODMENU_VERSION" == "null" ]; then
+             ALL_MM_VERSIONS=$(curl -s "https://api.modrinth.com/v2/project/mOgUt4GM/version")
+             MODMENU_VERSION=$(echo "$ALL_MM_VERSIONS" | jq -r --arg mc "$MC_VERSION" '.[] | select(.game_versions[] == $mc and .loaders[] == "fabric") | .version_number' | head -n 1)
+          fi
 
           if [ -z "$FABRIC_API_VERSION" ] || [ "$FABRIC_API_VERSION" == "null" ]; then
             echo "Error: Could not find Fabric API for Minecraft $MC_VERSION"

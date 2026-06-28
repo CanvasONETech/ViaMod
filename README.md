@@ -1,4 +1,4 @@
-# About ViaMod
+# About ViaMod [![Build and Release ViaMod](https://github.com/byionic/ViaMod/actions/workflows/build.yml/badge.svg)](https://github.com/byionic/ViaMod/actions/workflows/build.yml)
 ViaMod is a Minecraft Fabric Compatibility Layer supporting mods that are under the current running version. This can not run snapshot mods at the current moment. However, snapshot mods are supported under the [Snapshot](https://github.com/CanvasONETech/ViaMod/snapshot/) branch. This mod is for 1.20.1 Fabric, and anything below it is currently not supported. Everything above 1.20.1 Fabric is also supported.
 
 ## Not to be confused with [ViaFabricPlus by ViaVersion](https://github.com/ViaVersion/ViaFabricPlus)

@@ -5,6 +5,12 @@ plugins {
 
 version = System.getenv("MOD_VERSION") ?: "1.0.0"
 def targetMcVersion = System.getenv("MINECRAFT_VERSION") ?: "1.20.1"
+def fabricApiVersion = System.getenv("FABRIC_API_VERSION")
+def modMenuVersion = System.getenv("MODMENU_VERSION")
+
+if (!fabricApiVersion || !modMenuVersion) {
+    throw new GradleException("FABRIC_API_VERSION and MODMENU_VERSION environment variables must be set by GitHub Actions.")
+}
 
 base {
     archivesName = "ViaMod"
@@ -33,16 +39,12 @@ dependencies {
     minecraft "com.mojang:minecraft:${targetMcVersion}"
     mappings "net.fabricmc:yarn:${targetMcVersion}+build.5:v2"
     modImplementation "net.fabricmc:fabric-loader:0.16.10"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:0.100.1+${targetMcVersion}"
-    modImplementation "com.terraformersmc:modmenu:11.0.1"
+    
+    // Dynamically set versions from GitHub Actions
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+    modImplementation "com.terraformersmc:modmenu:${modMenuVersion}"
 }
 
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 21
-}
-
-jar {
-    from("LICENSE") {
-        rename { "${it}_${project.base.archivesName.get()}" }
-    }
 }   

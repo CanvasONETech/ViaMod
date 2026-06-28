@@ -8,6 +8,7 @@ def targetMcVersion = System.getenv("MINECRAFT_VERSION") ?: "1.20.1"
 def fabricApiVersion = System.getenv("FABRIC_API_VERSION")
 def modMenuVersion = System.getenv("MODMENU_VERSION")
 
+// Validate that required environment variables are present
 if (!fabricApiVersion || !modMenuVersion) {
     throw new GradleException("FABRIC_API_VERSION and MODMENU_VERSION environment variables must be set by GitHub Actions.")
 }
@@ -18,17 +19,17 @@ base {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(21) // Build with Java 21
     }
-    
-    // Ensure the JAR is compatible with Java 17 (Minecraft 1.20.1)
+    // Ensure output is compatible with Java 17 (Minecraft 1.20.1)
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-// Explicitly force the compiler to output Java 17 bytecode
+// Force the compiler to output Java 17 bytecode
 tasks.withType(JavaCompile).configureEach {
     options.release = 17
+    options.encoding = "UTF-8"
 }
 
 repositories {
@@ -38,7 +39,7 @@ repositories {
         url = "https://maven.terraformersmc.com/"
     }
     
-    // Optional: Modrinth Maven as a fallback for other mods
+    // Optional: Modrinth Maven as a fallback
     maven {
         name = "Modrinth"
         url = "https://api.modrinth.com/maven"
@@ -51,9 +52,17 @@ repositories {
 dependencies {
     minecraft "com.mojang:minecraft:${targetMcVersion}"
     mappings "net.fabricmc:yarn:${targetMcVersion}+build.1:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
     
+    // --- FIX: Read Fabric Loader from Environment Variable ---
+    def loaderVersion = System.getenv("FABRIC_LOADER_VERSION")
+    if (!loaderVersion || loaderVersion.isEmpty()) {
+        throw new GradleException("FABRIC_LOADER_VERSION environment variable is missing. Ensure the GitHub workflow sets it correctly.")
+    }
+    
+    modImplementation "net.fabricmc:fabric-loader:${loaderVersion}"
+    // ---------------------------------------------------------
+
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
     modImplementation "com.terraformersmc:modmenu:${modMenuVersion}"
 }
 

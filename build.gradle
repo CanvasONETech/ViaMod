@@ -20,6 +20,15 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+    
+    // Ensure the JAR is compatible with Java 17 (Minecraft 1.20.1)
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+// Explicitly force the compiler to output Java 17 bytecode
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
 }
 
 repositories {
@@ -34,31 +43,28 @@ repositories {
         name = "Modrinth"
         url = "https://api.modrinth.com/maven"
     }
-}
-
-processResources {
-    inputs.property "version", project.version
-    inputs.property "minecraft_version", targetMcVersion
-
-    filesMatching("fabric.mod.json") {
-        expand "version": project.version,
-               "minecraft_version": targetMcVersion
-    }
     
-    exclude "README.md"
-    exclude "LICENSE"
+    mavenCentral()
+    maven { url = "https://maven.fabricmc.net/" }
 }
 
 dependencies {
     minecraft "com.mojang:minecraft:${targetMcVersion}"
-    mappings "net.fabricmc:yarn:${targetMcVersion}+build.5:v2"
-    modImplementation "net.fabricmc:fabric-loader:0.16.10"
-    
-    // Dynamically set versions from GitHub Actions
+    mappings "net.fabricmc:yarn:${targetMcVersion}+build.1:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+    
     modImplementation "com.terraformersmc:modmenu:${modMenuVersion}"
 }
 
+processResources {
+    inputs.property "version", version
+    
+    filesMatching("fabric.mod.json") {
+        expand "version": version
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+    it.options.encoding = "UTF-8"
 }

@@ -33,10 +33,9 @@ public class ViaModClient implements ClientModInitializer {
 
         List<String> failedMods = new ArrayList<>();
         
-        // FIX 1: Use getGameContext() to get the version string safely
-        String currentMcVersion = FabricLoader.getInstance().getGameContext().getGameVersion().getName();
+        // FIX: Use getRawGameVersion() which exists in 1.20.1 Fabric Loader
+        String currentMcVersion = FabricLoader.getInstance().getRawGameVersion();
 
-        // FIX 2: Use Files.list() instead of Path.listFiles() which doesn't exist
         List<Path> jars;
         try {
             jars = Files.list(viaModsDir)
@@ -73,13 +72,12 @@ public class ViaModClient implements ClientModInitializer {
     }
 
     private boolean isModVersionHigher(String json, String currentVersion) {
-        // TODO: Implement actual JSON parsing and SemVer comparison
-        // For now, returns false to prevent false positives
+        // TODO: Implement actual JSON parsing
         return false; 
     }
 
     private String extractModName(String json) {
-        // TODO: Implement JSON parsing to extract "name" or "id"
+        // TODO: Implement JSON parsing
         return null;
     }
 }

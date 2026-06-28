@@ -1,0 +1,42 @@
+plugins {
+    id 'fabric-loom' version '1.6-SNAPSHOT'
+    id 'maven-publish'
+}
+
+version = System.getenv("MOD_VERSION") ?: "1.0.0"
+def targetMcVersion = System.getenv("MINECRAFT_VERSION") ?: "1.20.1"
+
+base {
+    archivesName = "ViaMod"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", targetMcVersion
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+               "minecraft_version": targetMcVersion
+    }
+    
+    exclude "README.md"
+    exclude "LICENSE"
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${targetMcVersion}"
+    mappings "net.fabricmc:yarn:${targetMcVersion}+build.5:v2"
+    modImplementation "net.fabricmc:fabric-loader:0.15.11"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:0.100.1+${targetMcVersion}"
+    modImplementation "com.terraformersmc:modmenu:11.0.1"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}   

@@ -22,6 +22,20 @@ java {
     }
 }
 
+repositories {
+    // REQUIRED: Add TerraformersMC repository for ModMenu
+    maven {
+        name = "TerraformersMC"
+        url = "https://maven.terraformersmc.com/"
+    }
+    
+    // Optional: Modrinth Maven as a fallback for other mods
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+    }
+}
+
 processResources {
     inputs.property "version", project.version
     inputs.property "minecraft_version", targetMcVersion
@@ -47,4 +61,4 @@ dependencies {
 
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 21
-}   
+}

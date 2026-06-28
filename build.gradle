@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.6-SNAPSHOT'
+    id 'fabric-loom' version '1.15.5'
     id 'maven-publish'
 }
 
@@ -32,11 +32,17 @@ processResources {
 dependencies {
     minecraft "com.mojang:minecraft:${targetMcVersion}"
     mappings "net.fabricmc:yarn:${targetMcVersion}+build.5:v2"
-    modImplementation "net.fabricmc:fabric-loader:0.15.11"
+    modImplementation "net.fabricmc:fabric-loader:0.16.10"
     modImplementation "net.fabricmc.fabric-api:fabric-api:0.100.1+${targetMcVersion}"
     modImplementation "com.terraformersmc:modmenu:11.0.1"
 }
 
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 21
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
 }   

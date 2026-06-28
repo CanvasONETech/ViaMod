@@ -14,7 +14,7 @@ on:
       prerelease:
         description: 'Mark as Pre-release?'
         required: false
-        default: false
+        default: 'false'
         type: boolean
 
 jobs:
@@ -33,6 +33,32 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Get Fabric API and ModMenu Versions
+        id: get_versions
+        run: |
+          MC_VERSION="${{ inputs.minecraft_version }}"
+          
+          # Fetch latest Fabric API version for the specified MC version
+          FABRIC_API_VERSION=$(curl -s "https://api.modrinth.com/v2/project/P7dR8mSH/version?loaders=[%22fabric%22]&game_versions=[%22$MC_VERSION%22]" | jq -r '.[0].version_number')
+          
+          # Fetch latest ModMenu version for the specified MC version
+          MODMENU_VERSION=$(curl -s "https://api.modrinth.com/v2/project/mOgUt4GM/version?loaders=[%22fabric%22]&game_versions=[%22$MC_VERSION%22]" | jq -r '.[0].version_number')
+
+          if [ -z "$FABRIC_API_VERSION" ] || [ "$FABRIC_API_VERSION" == "null" ]; then
+            echo "Error: Could not find Fabric API for Minecraft $MC_VERSION"
+            exit 1
+          fi
+          
+          if [ -z "$MODMENU_VERSION" ] || [ "$MODMENU_VERSION" == "null" ]; then
+            echo "Error: Could not find ModMenu for Minecraft $MC_VERSION"
+            exit 1
+          fi
+
+          echo "fabric_api_version=$FABRIC_API_VERSION" >> $GITHUB_OUTPUT
+          echo "modmenu_version=$MODMENU_VERSION" >> $GITHUB_OUTPUT
+          echo "Found Fabric API: $FABRIC_API_VERSION"
+          echo "Found ModMenu: $MODMENU_VERSION"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
@@ -44,6 +70,8 @@ jobs:
         env:
           MINECRAFT_VERSION: ${{ inputs.minecraft_version }}
           MOD_VERSION: ${{ inputs.mod_version }}
+          FABRIC_API_VERSION: ${{ steps.get_versions.outputs.fabric_api_version }}
+          MODMENU_VERSION: ${{ steps.get_versions.outputs.modmenu_version }}
 
       - name: Locate JAR
         id: find_jar
@@ -59,6 +87,10 @@ jobs:
           body: |
             Automated release for ViaMod version ${{ inputs.mod_version }} targeting Minecraft ${{ inputs.minecraft_version }}.
             
+            **Included Dependencies:**
+            - Fabric API: ${{ steps.get_versions.outputs.fabric_api_version }}
+            - ModMenu: ${{ steps.get_versions.outputs.modmenu_version }}
+            
             ## Installation
             1. Download the `.jar` file.
             2. Place it in `.minecraft/mods`.
@@ -67,4 +99,4 @@ jobs:
           prerelease: ${{ inputs.prerelease }}
           files: ${{ steps.find_jar.outputs.jar_path }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   

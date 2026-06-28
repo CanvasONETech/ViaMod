@@ -12,9 +12,6 @@ public class ViaModScreen extends Screen {
     private final Screen parent;
     private final List<String> failedMods;
 
-    /**
-     * Constructor used by ViaModClient (with error list) and ModMenuIntegration (with empty list).
-     */
     public ViaModScreen(Screen parent, List<String> failedMods) {
         super(Text.literal("ViaMod Manager"));
         this.parent = parent;
@@ -24,8 +21,6 @@ public class ViaModScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        
-        // Add an OK/Back button
         this.addDrawableChild(ButtonWidget.builder(Text.literal("Done"), button -> {
             if (this.client != null) {
                 this.client.setScreen(this.parent);
@@ -35,46 +30,20 @@ public class ViaModScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // FIX: In MC 1.20.1, renderBackground only takes DrawContext
+        // FIX: 1.20.1 signature only takes DrawContext
         this.renderBackground(context);
-        
         super.render(context, mouseX, mouseY, delta);
 
-        // Title
-        context.drawCenteredTextWithShadow(
-            this.textRenderer, 
-            failedMods.isEmpty() ? "ViaMod Manager" : "Compatibility Error", 
-            this.width / 2, 
-            20, 
-            0xFFFFFF
-        );
+        String title = failedMods.isEmpty() ? "ViaMod Manager" : "Compatibility Error";
+        context.drawCenteredTextWithShadow(this.textRenderer, title, this.width / 2, 20, 0xFFFFFF);
 
         if (failedMods.isEmpty()) {
-            context.drawCenteredTextWithShadow(
-                this.textRenderer, 
-                "No incompatible mods found.", 
-                this.width / 2, 
-                this.height / 2 - 10, 
-                0x55FF55
-            );
+            context.drawCenteredTextWithShadow(this.textRenderer, "No incompatible mods found.", this.width / 2, this.height / 2 - 10, 0x55FF55);
         } else {
-            context.drawCenteredTextWithShadow(
-                this.textRenderer, 
-                "The following mods could not be loaded:", 
-                this.width / 2, 
-                this.height / 2 - 40, 
-                0xFF5555
-            );
-
+            context.drawCenteredTextWithShadow(this.textRenderer, "The following mods could not be loaded:", this.width / 2, this.height / 2 - 40, 0xFF5555);
             int yOffset = this.height / 2 - 20;
             for (String mod : failedMods) {
-                context.drawCenteredTextWithShadow(
-                    this.textRenderer, 
-                    Text.literal(mod).formatted(Formatting.RED), 
-                    this.width / 2, 
-                    yOffset, 
-                    0xFFFFFF
-                );
+                context.drawCenteredTextWithShadow(this.textRenderer, Text.literal(mod).formatted(Formatting.RED), this.width / 2, yOffset, 0xFFFFFF);
                 yOffset += 12;
             }
         }
@@ -86,4 +55,4 @@ public class ViaModScreen extends Screen {
             this.client.setScreen(this.parent);
         }
     }
-}   
+}

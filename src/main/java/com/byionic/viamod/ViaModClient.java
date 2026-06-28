@@ -80,4 +80,4 @@ public class ViaModClient implements ClientModInitializer {
         // Simplified extraction
         return null;
     }
-}   
+}

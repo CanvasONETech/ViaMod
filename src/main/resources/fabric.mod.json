@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "viamod",
+  "version": "${version}",
+  "name": "ViaMod",
+  "description": "ViaMod is a mod compatibility layer for Fabric 1.20.1-Latest",
+  "authors": [
+    "ByIonic"
+  ],
+  "contact": {
+    "homepage": "https://github.com/byionic/ViaMod",
+    "sources": "https://github.com/byionic/ViaMod"
+  },
+  "license": "GPL-3.0",
+  "icon": "assets/viamod/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.byionic.viamod.ViaModClient"
+    ],
+    "modmenu": [
+      "com.byionic.viamod.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "viamod.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": ">=1.20.1",
+    "java": ">=17",
+    "fabric-api": "*",
+    "modmenu": "*"
+  }
+}   

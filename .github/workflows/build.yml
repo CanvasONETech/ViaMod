@@ -33,7 +33,7 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Get Fabric API and ModMenu Versions
+      - name: Get Fabric API, ModMenu, and Fabric Loader Versions
         id: get_versions
         run: |
           MC_VERSION="${{ inputs.minecraft_version }}"
@@ -43,19 +43,45 @@ jobs:
           FABRIC_API_VERSION=$(curl -s "https://api.modrinth.com/v2/project/P7dR8mSH/version" | \
             jq -r --arg mc "$MC_VERSION" '.[] | select(.game_versions[] == $mc and .loaders[] == "fabric") | .version_number' | head -n 1)
 
-          # 2. Fetch ModMenu from Modrinth API (FIXED: Uses game_versions filter instead of Maven string matching)
-          # ModMenu uses semantic versioning (e.g., 7.2.2) which does not contain "1.20.1" in the version string.
-          # The Modrinth API correctly maps game compatibility.
+          # 2. Fetch ModMenu from Modrinth
           MODMENU_VERSION=$(curl -s "https://api.modrinth.com/v2/project/mOgUt4GM/version" | \
             jq -r --arg mc "$MC_VERSION" '.[] | select(.game_versions[] == $mc and .loaders[] == "fabric") | .version_number' | head -n 1)
-          
-          # Fallback: Hardcoded mapping for stable releases if API fails or returns empty
-          if [ -z "$MODMENU_VERSION" ]; then
-            echo "::notice::Modrinth API returned empty, trying fallback mapping..."
+
+          # 3. Fetch Fabric Loader from Modrinth (Project ID: 8gpe3365)
+          FABRIC_LOADER_VERSION=$(curl -s "https://api.modrinth.com/v2/project/8gpe3365/version" | \
+            jq -r --arg mc "$MC_VERSION" '.[] | select(.game_versions[] == $mc and .loaders[] == "fabric") | .version_number' | head -n 1)
+
+          # --- Fallback Logic (If API returns empty) ---
+
+          # Fabric API Fallback
+          if [ -z "$FABRIC_API_VERSION" ] || [ "$FABRIC_API_VERSION" == "null" ]; then
+            echo "::notice::Fabric API API returned empty, trying fallback..."
+            case "$MC_VERSION" in
+              "1.20.1") FABRIC_API_VERSION="0.92.0+1.20.1" ;;
+              "1.20.2") FABRIC_API_VERSION="0.94.0+1.20.2" ;;
+              "1.20.3") FABRIC_API_VERSION="0.94.0+1.20.3" ;;
+              "1.20.4") FABRIC_API_VERSION="0.97.0+1.20.4" ;;
+              "1.20.5") FABRIC_API_VERSION="0.100.0+1.20.5" ;;
+              "1.20.6") FABRIC_API_VERSION="0.100.0+1.20.6" ;;
+              "1.21.0") FABRIC_API_VERSION="0.100.0+1.21" ;;
+              "1.21.1") FABRIC_API_VERSION="0.105.0+1.21.1" ;;
+              "1.21.2") FABRIC_API_VERSION="0.109.0+1.21.2" ;;
+              "1.21.3") FABRIC_API_VERSION="0.110.0+1.21.3" ;;
+              "1.21.4") FABRIC_API_VERSION="0.113.0+1.21.4" ;;
+              *) 
+                echo "::error::No fallback for Fabric API for $MC_VERSION"
+                exit 1
+                ;;
+            esac
+          fi
+
+          # ModMenu Fallback
+          if [ -z "$MODMENU_VERSION" ] || [ "$MODMENU_VERSION" == "null" ]; then
+            echo "::notice::ModMenu API returned empty, trying fallback..."
             case "$MC_VERSION" in
               "1.20.1") MODMENU_VERSION="7.2.2" ;;
               "1.20.2") MODMENU_VERSION="7.2.2" ;;
-              "1.20.3") MODMENU_VERSION="7.2.2" ;; # Often compatible with .4 mods or specific .3 build
+              "1.20.3") MODMENU_VERSION="7.2.2" ;;
               "1.20.4") MODMENU_VERSION="9.2.0" ;;
               "1.20.5") MODMENU_VERSION="10.0.0" ;;
               "1.20.6") MODMENU_VERSION="10.0.0" ;;
@@ -65,71 +91,92 @@ jobs:
               "1.21.3") MODMENU_VERSION="12.0.0" ;;
               "1.21.4") MODMENU_VERSION="13.0.1" ;;
               *) 
-                echo "::error::No hardcoded ModMenu version for $MC_VERSION. Please update the script."
+                echo "::error::No fallback for ModMenu for $MC_VERSION"
                 exit 1
                 ;;
             esac
           fi
 
-          # Validation
+          # Fabric Loader Fallback
+          if [ -z "$FABRIC_LOADER_VERSION" ] || [ "$FABRIC_LOADER_VERSION" == "null" ]; then
+            echo "::notice::Fabric Loader API returned empty, trying fallback..."
+            case "$MC_VERSION" in
+              "1.20.1") FABRIC_LOADER_VERSION="0.15.11" ;;
+              "1.20.2") FABRIC_LOADER_VERSION="0.15.11" ;;
+              "1.20.3") FABRIC_LOADER_VERSION="0.15.11" ;;
+              "1.20.4") FABRIC_LOADER_VERSION="0.15.11" ;;
+              "1.20.5") FABRIC_LOADER_VERSION="0.15.11" ;;
+              "1.20.6") FABRIC_LOADER_VERSION="0.15.11" ;;
+              "1.21.0") FABRIC_LOADER_VERSION="0.16.0" ;;
+              "1.21.1") FABRIC_LOADER_VERSION="0.16.1" ;;
+              "1.21.2") FABRIC_LOADER_VERSION="0.16.5" ;;
+              "1.21.3") FABRIC_LOADER_VERSION="0.16.5" ;;
+              "1.21.4") FABRIC_LOADER_VERSION="0.16.7" ;;
+              *) 
+                echo "::error::No fallback for Fabric Loader for $MC_VERSION"
+                exit 1
+                ;;
+            esac
+          fi
+
+          # Final Validation
           if [ -z "$FABRIC_API_VERSION" ] || [ "$FABRIC_API_VERSION" == "null" ]; then
-            echo "::error::Could not find Fabric API for Minecraft $MC_VERSION"
+            echo "::error::Could not determine Fabric API version for $MC_VERSION"
             exit 1
           fi
           
-          if [ -z "$MODMENU_VERSION" ]; then
-            echo "::error::Could not find ModMenu for Minecraft $MC_VERSION"
+          if [ -z "$MODMENU_VERSION" ] || [ "$MODMENU_VERSION" == "null" ]; then
+            echo "::error::Could not determine ModMenu version for $MC_VERSION"
             exit 1
           fi
 
+          if [ -z "$FABRIC_LOADER_VERSION" ] || [ "$FABRIC_LOADER_VERSION" == "null" ]; then
+            echo "::error::Could not determine Fabric Loader version for $MC_VERSION"
+            exit 1
+          fi
+
+          # Output variables for next steps
           echo "fabric_api_version=$FABRIC_API_VERSION" >> $GITHUB_OUTPUT
           echo "modmenu_version=$MODMENU_VERSION" >> $GITHUB_OUTPUT
+          echo "fabric_loader_version=$FABRIC_LOADER_VERSION" >> $GITHUB_OUTPUT
+          
           echo "Successfully found:"
           echo "  - Fabric API: $FABRIC_API_VERSION"
           echo "  - ModMenu: $MODMENU_VERSION"
+          echo "  - Fabric Loader: $FABRIC_LOADER_VERSION"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/gradle-build-action@v3
 
       - name: Make Gradle Wrapper Executable
         run: chmod +x ./gradlew
 
       - name: Build Mod
-        run: ./gradlew clean build
+        run: |
+          ./gradlew clean build \
+            -PfabricApiVersion=${{ steps.get_versions.outputs.fabric_api_version }} \
+            -PmodMenuVersion=${{ steps.get_versions.outputs.modmenu_version }} \
+            -PfabricLoaderVersion=${{ steps.get_versions.outputs.fabric_loader_version }} \
+            -PmodVersion=${{ inputs.mod_version }} \
+            -PminecraftVersion=${{ inputs.minecraft_version }}
         env:
-          MINECRAFT_VERSION: ${{ inputs.minecraft_version }}
-          MOD_VERSION: ${{ inputs.mod_version }}
           FABRIC_API_VERSION: ${{ steps.get_versions.outputs.fabric_api_version }}
           MODMENU_VERSION: ${{ steps.get_versions.outputs.modmenu_version }}
+          FABRIC_LOADER_VERSION: ${{ steps.get_versions.outputs.fabric_loader_version }}
 
       - name: Locate JAR
-        id: find_jar
+        id: jar
         run: |
-          JAR_PATH=$(find build/libs -name "*${{ inputs.mod_version }}*.jar" ! -name "*-sources*" ! -name "*-dev*" | head -n 1)
-          if [ -z "$JAR_PATH" ]; then
-            echo "::error::Build successful but no JAR file found matching version ${{ inputs.mod_version }}"
-            exit 1
-          fi
+          JAR_PATH=$(find build/libs -name "*.jar" ! -name "*-sources*" ! -name "*-dev*" | head -n 1)
           echo "jar_path=$JAR_PATH" >> $GITHUB_OUTPUT
+          echo "Found JAR at: $JAR_PATH"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        if: success()
         with:
-          tag_name: "v${{ inputs.mod_version }}-${{ inputs.minecraft_version }}"
-          name: "ViaMod ${{ inputs.mod_version }} for MC ${{ inputs.minecraft_version }}"
-          body: |
-            Automated release for ViaMod version ${{ inputs.mod_version }} targeting Minecraft ${{ inputs.minecraft_version }}.
-            
-            **Included Dependencies:**
-            - Fabric API: ${{ steps.get_versions.outputs.fabric_api_version }}
-            - ModMenu: ${{ steps.get_versions.outputs.modmenu_version }}
-            
-            ## Installation
-            1. Download the `.jar` file.
-            2. Place it in `.minecraft/mods`.
-            3. Place older mods in `.minecraft/viamods`.
-          draft: false
+          tag_name: v${{ inputs.mod_version }}
+          name: ViaMod ${{ inputs.mod_version }} for Minecraft ${{ inputs.minecraft_version }}
+          files: ${{ steps.jar.outputs.jar_path }}
           prerelease: ${{ inputs.prerelease }}
-          files: ${{ steps.find_jar.outputs.jar_path }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          generate_release_notes: true

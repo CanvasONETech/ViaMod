@@ -1,0 +1,1 @@
+ViaMod is a Minecraft Fabric Compatibility Layer supporting mods that are under the current running version. This can not run snapshot mods at the current moment. However, snapshot mods are supported under the [https://github.com/CanvasONETech/ViaMod/snapshot/](Snapshot) branch.

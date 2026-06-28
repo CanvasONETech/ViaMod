@@ -4,5 +4,5 @@ ViaMod is a Minecraft Fabric Compatibility Layer supporting mods that are under 
 ## Not to be confused with [ViaFabricPlus by ViaVersion](https://github.com/ViaVersion/ViaFabricPlus)
 If you wish to join older servers than your client's version, including Bedrock Servers, use ViaFabricPlus.
 
-## If you are using [ModMenu by Terraformers](https://modrinth.com/mod/modmenu),
+## If you are using [ModMenu by Terraformers](https://modrinth.com/mod/modmenu)
 To show the older mods on ModMenu (TUTORIAL SOON)

@@ -2,22 +2,17 @@ package com.byionic.viamod;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.loader.api.ModContainer;
-import net.fabricmc.loader.api.metadata.ModMetadata;
-import net.fabricmc.loader.api.metadata.version.VersionInterval;
-import net.fabricmc.loader.impl.util.VersionUtil;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
+import java.util.stream.Collectors;
 
 public class ViaModClient implements ClientModInitializer {
     private static boolean hasShownError = false;
@@ -37,25 +32,33 @@ public class ViaModClient implements ClientModInitializer {
         }
 
         List<String> failedMods = new ArrayList<>();
-        String currentMcVersion = FabricLoader.getInstance().getGameVersion().getFriendlyString();
+        
+        // FIX 1: Use getGameContext() to get the version string safely
+        String currentMcVersion = FabricLoader.getInstance().getGameContext().getGameVersion().getName();
 
-        File[] jars = viaModsDir.listFiles((dir, name) -> name.endsWith(".jar"));
-        if (jars != null) {
-            for (File jar : jars) {
-                try (JarFile jarFile = new JarFile(jar)) {
-                    ZipEntry entry = jarFile.getEntry("fabric.mod.json");
-                    if (entry != null) {
-                        String jsonContent = new String(jarFile.getInputStream(entry).readAllBytes());
-                        // Simple parsing for 'depends' -> 'minecraft' version range
-                        // In a real implementation, use a JSON library like Gson
-                        if (isModVersionHigher(jsonContent, currentMcVersion)) {
-                            String modName = extractModName(jsonContent);
-                            failedMods.add(modName != null ? modName : jar.getName());
-                        }
+        // FIX 2: Use Files.list() instead of Path.listFiles() which doesn't exist
+        List<Path> jars;
+        try {
+            jars = Files.list(viaModsDir)
+                    .filter(path -> path.getFileName().toString().endsWith(".jar"))
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        for (Path jarPath : jars) {
+            try (JarFile jarFile = new JarFile(jarPath.toFile())) {
+                ZipEntry entry = jarFile.getEntry("fabric.mod.json");
+                if (entry != null) {
+                    String jsonContent = new String(jarFile.getInputStream(entry).readAllBytes());
+                    if (isModVersionHigher(jsonContent, currentMcVersion)) {
+                        String modName = extractModName(jsonContent);
+                        failedMods.add(modName != null ? modName : jarPath.getFileName().toString());
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
 
@@ -70,14 +73,13 @@ public class ViaModClient implements ClientModInitializer {
     }
 
     private boolean isModVersionHigher(String json, String currentVersion) {
-        // Simplified logic: Check if the mod requires a version strictly greater than current
-        // Real implementation requires parsing SemVer ranges from fabric.mod.json
-        // This is a placeholder for the actual version comparison logic
+        // TODO: Implement actual JSON parsing and SemVer comparison
+        // For now, returns false to prevent false positives
         return false; 
     }
 
     private String extractModName(String json) {
-        // Simplified extraction
+        // TODO: Implement JSON parsing to extract "name" or "id"
         return null;
     }
 }
